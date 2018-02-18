@@ -1,0 +1,34 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE=1
+#export DEB_BUILD_OPTIONS=nocheck
+export PYBUILD_NAME=m2crypto
+export DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow
+
+export PYBUILD_AFTER_BUILD=cp {build_dir}/M2Crypto/_m2crypto.so M2Crypto/
+# bindings needed inplace for tests and docs
+
+export http_proxy=
+export https_proxy=
+# override settings from pybuild, unset them is needed for tests
+
+%:
+	dh $@ --with python2,sphinxdoc --buildsystem=pybuild
+
+override_dh_auto_test:
+ifneq (,$(filter $(DEB_BUILD_ARCH),ppc64el powerpc ppc64))
+	PYBUILD_SYSTEM=custom PYBUILD_TEST_ARGS="{interpreter} -Wd -m pytest -k 'not test_HTTPSConnection_SNI_support' -v -rs" dh_auto_test
+else
+	PYBUILD_SYSTEM=custom PYBUILD_TEST_ARGS="{interpreter} -Wd -m pytest -v -rs" dh_auto_test
+endif
+	# temporarily disable test_ssl.py::HttpslibSSLClientTestCase::test_HTTPSConnection_SNI_support, see #881652
+
+override_dh_auto_install:
+	dh_auto_install
+ifeq (,$(findstring nodoc, $(DEB_BUILD_OPTIONS)))
+	PYTHONPATH=. http_proxy='127.0.0.1:9' sphinx-build -N doc debian/python-m2crypto/usr/share/doc/python-m2crypto/html
+endif
+
+override_dh_installdocs:
+	rst2html -r 5 README.rst .pybuild/README.html
+	LC_LANG=C.UTF-8 links -dump .pybuild/README.html > .pybuild/README
+	dh_installdocs .pybuild/README

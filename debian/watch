@@ -1,0 +1,3 @@
+version=3
+opts=uversionmangle=s/(rc|a|b|beta|c)/~$1/,pgpsigurlmangle=s/$/.asc/ \
+https://pypi.debian.net/M2Crypto/M2Crypto-(.+)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))
